@@ -1,5 +1,4 @@
-# main.py
-from fastapi import FastAPI
+from fastapi import FastAPI, Query, HTTPException
 from pydantic import BaseModel, Field, validator
 import pandas as pd
 import joblib
@@ -9,16 +8,22 @@ import joblib
 # --------------------------------------------------
 app = FastAPI(
     title="Credit Default Risk API",
-    description="Predict probability of credit default using multiple ML models",
+    description="Predict probability of credit default using ML models",
     version="1.0"
 )
 
 # --------------------------------------------------
-# Load trained models (pipelines)
+# Load models
 # --------------------------------------------------
 logreg_model = joblib.load("models/logreg_pipeline.joblib")
 rf_model = joblib.load("models/rf_pipeline.joblib")
 lgbm_model = joblib.load("models/lgbm_pipeline.joblib")
+
+MODELS = {
+    "logistic": logreg_model,
+    "random_forest": rf_model,
+    "lightgbm": lgbm_model
+}
 
 # --------------------------------------------------
 # Input schema
@@ -59,41 +64,54 @@ def risk_level(prob):
         return "High"
     elif prob >= 0.4:
         return "Medium"
-    else:
-        return "Low"
+    return "Low"
 
 # --------------------------------------------------
-# Health check
+# Health
 # --------------------------------------------------
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    return {"status": "ok", "available_models": list(MODELS.keys())}
 
 # --------------------------------------------------
-# Prediction endpoint
+# Predict endpoint
 # --------------------------------------------------
 @app.post("/predict")
-def predict(application: CreditApplication):
+def predict(
+    application: CreditApplication,
+    model: str = Query(
+        None,
+        description="Model to use: logistic, random_forest, lightgbm (default = all)"
+    )
+):
     """
-    Returns probability of default from all models
+    Predict default probability using one or all models
     """
     df = pd.DataFrame([application.dict()])
 
-    logreg_prob = logreg_model.predict_proba(df)[:, 1][0]
-    rf_prob = rf_model.predict_proba(df)[:, 1][0]
-    lgbm_prob = lgbm_model.predict_proba(df)[:, 1][0]
+    # If user selects a specific model
+    if model:
+        if model not in MODELS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid model. Choose from {list(MODELS.keys())}"
+            )
 
-    return {
-        "logistic_regression": {
-            "probability_of_default": round(float(logreg_prob), 4),
-            "risk_level": risk_level(logreg_prob)
-        },
-        "random_forest": {
-            "probability_of_default": round(float(rf_prob), 4),
-            "risk_level": risk_level(rf_prob)
-        },
-        "lightgbm": {
-            "probability_of_default": round(float(lgbm_prob), 4),
-            "risk_level": risk_level(lgbm_prob)
+        prob = MODELS[model].predict_proba(df)[:, 1][0]
+
+        return {
+            "model_used": model,
+            "probability_of_default": round(float(prob), 4),
+            "risk_level": risk_level(prob)
         }
-    }
+
+    # Otherwise run all models
+    results = {}
+    for name, mdl in MODELS.items():
+        prob = mdl.predict_proba(df)[:, 1][0]
+        results[name] = {
+            "probability_of_default": round(float(prob), 4),
+            "risk_level": risk_level(prob)
+        }
+
+    return results

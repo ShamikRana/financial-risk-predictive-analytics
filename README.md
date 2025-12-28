@@ -59,12 +59,6 @@ Where `sample_input.json` contains the required fields (see the notebook or `/do
 - Use Stratified K-Fold cross-validation and report ROC-AUC and PR-AUC for imbalanced classification tasks.
 - Check the model with SHAP for feature attributions and look for potential leakage.
 
-## Next steps (deployment)
-
-- Package the selected model and preprocessing pipeline in the `app/` module and add unit tests for input validation.
-- Add Dockerfile (if not present) and CI to build and push images.
-- Validate fairness and calibration across demographic groups before production deployment.
-
 ## License
 
 MIT License — see the `LICENSE` file for details.
