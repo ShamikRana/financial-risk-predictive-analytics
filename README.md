@@ -1,38 +1,72 @@
 # Predictive Analytics System for Financial Risk Assessment
 
-This repository contains an end-to-end machine learning system for predicting financial risk (credit default).
-The project is developed as part of an MSc Data Science capstone.
+This repository contains a reproducible pipeline for predicting credit-card default using the UCI Credit Card dataset. This project is developed as an MSc Data Science capstone and includes:
 
-## Objectives
-- Build and compare ML models:
-  - Logistic Regression
-  - Random Forest
-  - Gradient Boosting (LightGBM)
-- Perform robust evaluation using business-relevant metrics
-- Ensure explainability and reproducibility
-- Deploy the final model using FastAPI and Docker
+- A cleaned and documented Jupyter notebook with EDA, feature engineering, and model training
+- Training pipelines for Logistic Regression, Random Forest, and LightGBM
+- A FastAPI service that serves the trained pipelines
+- Saved model artifacts (`./models/`) and evaluation summaries
 
-## Tech Stack
-- Python, Pandas, NumPy
-- Scikit-learn, LightGBM
-- SHAP (model explainability)
-- FastAPI (model serving)
-- Docker (containerization)
+## Quick start (run the API)
 
-## Project Structure
-predictive-financial-risk/
-├── data/
-├── notebooks/
-├── src/
-├── app/
-├── models/
-├── Dockerfile
-├── requirements.txt
-└── README.md
+1. Create and activate a virtual environment (recommended):
+
+```bash
+python -m venv env
+# Windows
+env\Scripts\activate
+# macOS / Linux
+source env/bin/activate
+```
+
+2. Install requirements:
+
+```bash
+pip install -r requirements.txt
+```
+
+3. Run the API locally with uvicorn:
+
+```bash
+uvicorn main:app --reload --port 8000
+```
+
+Open http://127.0.0.1:8000/docs to view the interactive API documentation (Swagger UI).
+
+## API Endpoints
+
+- `GET /health` — health status and models loaded
+- `GET /models` — list available models and basic metadata
+- `POST /predict` — predict probabilities; accepts JSON body matching the `CreditApplication` schema and optional `models` query parameter (comma-separated) to select models
+- `GET /predict/{model_name}` — predict with a single model
+
+Example `curl` (all models):
+
+```bash
+curl -X POST "http://127.0.0.1:8000/predict" -H "Content-Type: application/json" -d @sample_input.json
+```
+
+Where `sample_input.json` contains the required fields (see the notebook or `/docs` UI).
+
+## Notebook and Model Training
+
+- The primary notebook `notebook/credit_risk_eda_modeling.ipynb` contains: EDA, feature engineering (compact feature set), model pipelines, randomized hyperparameter search, evaluation (ROC/PR/AUC), calibration, and SHAP interpretability examples.
+- Models are saved to `./models/` using `joblib` after tuning. `models/results_summary.json` stores the evaluation metrics for reproducibility.
+
+## Reproducibility & Notes for Reviewers
+
+- Random seeds are set in the notebook for reproducibility.
+- Use Stratified K-Fold cross-validation and report ROC-AUC and PR-AUC for imbalanced classification tasks.
+- Check the model with SHAP for feature attributions and look for potential leakage.
+
+## Next steps (deployment)
+
+- Package the selected model and preprocessing pipeline in the `app/` module and add unit tests for input validation.
+- Add Dockerfile (if not present) and CI to build and push images.
+- Validate fairness and calibration across demographic groups before production deployment.
+
+## License
+
+MIT License — see the `LICENSE` file for details.
 
 
-## Status
-🚧 In development — data ingestion and baseline modeling in progress.
-
-## Author
-MSc Data Science Capstone Project
